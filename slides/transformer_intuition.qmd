@@ -1,0 +1,31 @@
+---
+title: "Introduction to Transformer Models"
+format: html
+---
+
+
+# Introduction
+
+
+{{< video https://www.youtube.com/embed/SZorAJ4I-sA >}}
+
+Transformers, explained: Understand the model behind GPT, BERT, and T5 by Dale Markowitz
+
+
+## 
+
+Step 1 is to compute relevancy scores between the vector for “station” and every other
+word in the sentence. These are our “attention scores.” We’re simply going to use the
+dot product between two word vectors as a measure of the strength of their relationship.
+It’s a very computationally efficient distance function, and it was already the standard
+way to relate two word embeddings to each other long before Transformers. In
+practice, these scores will also go through a scaling function and a softmax, but for
+now, that’s just an implementation detail.
+Step 2 is to compute the sum of all word vectors in the sentence, weighted by our
+relevancy scores. Words closely related to “station” will contribute more to the sum
+(including the word “station” itself), while irrelevant words will contribute almost
+nothing. The resulting vector is our new representation for “station”: a representation
+that incorporates the surrounding context. In particular, it includes part of the “train”
+vector, clarifying that it is, in fact, a “train station.”
+You’d repeat this process for every word in the sentence, producing a new
+sequence of vectors encoding the sentence. Let’s see it in NumPy-like pseudocode:
