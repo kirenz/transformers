@@ -1,7 +1,7 @@
 ---
-title: "Hugging Face Pipelines"
+title: "Hugging Face 🤗 Pipelines"
 lang: en
-subtitle: "Types of Pipelines"
+subtitle: "Code examples"
 author: Jan Kirenz
 execute:
   eval: false
@@ -52,6 +52,14 @@ format:
 ## Python setup
 
 ```{python}
+from transformers.keras_callbacks import PushToHubCallback
+from huggingface_hub import notebook_login
+import tensorflow as tf
+from transformers import TFAutoModelForQuestionAnswering
+from transformers import create_optimizer
+from transformers import DefaultDataCollator
+from transformers import AutoTokenizer
+from datasets import load_dataset
 from transformers import pipeline
 ```
 
@@ -139,10 +147,347 @@ specific_model(data)
 
 - [Hugging Face documentation](https://huggingface.co/tasks/text-classification)
 
-# Named Entity Recognition (NER)
 
 
-## Question-answering
+# Question-answering
+
+The follwoing content is based on the [Hugging Face documentation](https://huggingface.co/docs/transformers/tasks/question_answering)
+
+## Intuition
+
+- Question answering tasks return an answer given a question. 
+
+
+## Two common types
+
+- *Extractive*: selecting an answer directly from the original text
+
+
+- *Abstractive*: involves generating a new answer that may not be directly present in the text
+
+## Log into Hugging Face
+
+- Login to your Hugging Face account so you can upload and share your model. 
+
+- When prompted, enter your token to login (`from huggingface_hub import notebook_login`)
+
+```{python}
+
+notebook_login()
+
+```
+
+## Example data
+
+- Start by loading a subset of the SQuAD dataset^[Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset, consisting of questions posed by crowdworkers on a set of Wikipedia articles, where the answer to every question is a segment of text, or span, from the corresponding reading passage, or the question might be unanswerable.]
+
+. . .
+
+```{python}
+
+squad = load_dataset("squad", split="train[:5000]")
+
+```
+
+## Train test split
+
+```{python}
+
+squad = squad.train_test_split(test_size=0.2)
+
+```
+
+
+## Take a look at the data
+
+```{python}
+squad["train"][0]
+```
+
+
+- Output: 
+. . .
+
+
+```{bash}
+{'id': '56cece5caab44d1400b88a9f',
+ 'title': '2008_Sichuan_earthquake',
+ 'context': 'The Red Cross Society of China flew 557 tents and 2,500 quilts valued at 788,000 yuan (US$113,000) to Wenchuan County. The Amity Foundation already began relief work in the region and has earmarked US$143,000 for disaster relief. The Sichuan Ministry of Civil Affairs said that they have provided 30,000 tents for those left homeless.',
+ 'question': 'How many tents did the Sichuan Ministry provide for the homeless?',
+ 'answers': {'text': ['30,000'], 'answer_start': [297]}}
+
+```
+
+## Take a look at the data
+
+
+There are several fields here:
+
+- *answers*: the starting location of the answer token and the answer text.
+
+- *context*: background information from which the model needs to extract the answer.
+
+- *question*: the question a model should answer.
+
+
+## Tokenization
+
+- Load a DistilBERT tokenizer to process the question and context fields (`from transformers import AutoTokenizer`)
+
+```{python}
+tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+```
+
+
+## Preprocessing steps
+
+
+- If context exceeds the maximum input length of the model:
+  -  Truncate only the context by setting `truncation="only_second"`
+
+- Map the start and end positions of the answer to the original context by `setting return_offset_mapping=True`.
+
+- With the mapping you can find the start and end tokens of the answer. Use the `sequence_ids` method to find which part of the offset corresponds to the question and which corresponds to the context.
+
+Here is how you can create a function to truncate and map the start and end tokens of the answer to the context:
+
+## Define preprocessing function 
+
+```{python}
+
+
+def preprocess_function(examples):
+    questions = [q.strip() for q in examples["question"]]
+    inputs = tokenizer(
+        questions,
+        examples["context"],
+        max_length=384,
+        truncation="only_second",
+        return_offsets_mapping=True,
+        padding="max_length",
+    )
+
+    offset_mapping = inputs.pop("offset_mapping")
+    answers = examples["answers"]
+    start_positions = []
+    end_positions = []
+
+    for i, offset in enumerate(offset_mapping):
+        answer = answers[i]
+        start_char = answer["answer_start"][0]
+        end_char = answer["answer_start"][0] + len(answer["text"][0])
+        sequence_ids = inputs.sequence_ids(i)
+
+        # Find the start and end of the context
+        idx = 0
+        while sequence_ids[idx] != 1:
+            idx += 1
+        context_start = idx
+        while sequence_ids[idx] == 1:
+            idx += 1
+        context_end = idx - 1
+
+        # If the answer is not fully inside the context, label it (0, 0)
+        if offset[context_start][0] > end_char or offset[context_end][1] < start_char:
+            start_positions.append(0)
+            end_positions.append(0)
+        else:
+            # Otherwise it's the start and end token positions
+            idx = context_start
+            while idx <= context_end and offset[idx][0] <= start_char:
+                idx += 1
+            start_positions.append(idx - 1)
+
+            idx = context_end
+            while idx >= context_start and offset[idx][1] >= end_char:
+                idx -= 1
+            end_positions.append(idx + 1)
+
+    inputs["start_positions"] = start_positions
+    inputs["end_positions"] = end_positions
+    return inputs
+
+
+```
+
+
+## Apply preprocessing function 
+
+To apply the preprocessing function over the entire dataset, use  Datasets map function.
+
+```{python}
+tokenized_squad = squad.map(
+    preprocess_function, batched=True, remove_columns=squad["train"].column_names)
+```
+
+## Create a batch
+
+- Create a batch of examples using DefaultDataCollator (`from transformers import DefaultDataCollator`) 
+
+```{python}
+
+data_collator = DefaultDataCollator(return_tensors="tf")
+
+```
+
+## Finetune the model in TensorFlow
+
+- Setting up an optimizer function, learning rate schedule, and some training hyperparameters (`from transformers import create_optimizer`):
+
+. . .
+
+```{python}
+
+batch_size = 16
+num_epochs = 2
+total_train_steps = (len(tokenized_squad["train"]) // batch_size) * num_epochs
+optimizer, schedule = create_optimizer(
+    init_lr=2e-5,
+    num_warmup_steps=0,
+    num_train_steps=total_train_steps,
+)
+
+```
+
+##
+
+Then you can load DistilBERT with TFAutoModelForQuestionAnswering:
+
+xyz .from_pretrained hinzugefügt???
+
+```{python}
+
+model = TFAutoModelForQuestionAnswering.from_pretrained(
+    "distilbert-base-uncased")
+
+```
+
+## Convert dataset
+
+- Convert datasets to the tf.data.Dataset format with prepare_tf_dataset():
+
+. . .
+
+```{python}
+tf_train_set = model.prepare_tf_dataset(
+    tokenized_squad["train"],
+    shuffle=True,
+    batch_size=16,
+    collate_fn=data_collator,
+)
+
+tf_validation_set = model.prepare_tf_dataset(
+    tokenized_squad["test"],
+    shuffle=False,
+    batch_size=16,
+    collate_fn=data_collator,
+)
+```
+
+## Compile
+
+Configure the model for training with compile (import tensorflow as tf):
+
+
+```{python}
+
+model.compile(optimizer=optimizer)
+
+```
+
+## Push model to the hub
+
+- You first need to install an open source Git extension for versioning large files: <https://git-lfs.com/>
+
+- Provide a way to push your model to the Hub (`from transformers.keras_callbacks import PushToHubCallback
+`)
+
+
+```{python}
+
+callback = PushToHubCallback(
+    output_dir="qa_model_poc",
+    tokenizer=tokenizer,
+)
+
+```
+
+
+## Start training
+
+- Start training your model! 
+
+- Call fit with your training and validation datasets, the number of epochs, and your callback to finetune the model:
+
+```{python}
+
+model.fit(x=tf_train_set, validation_data=tf_validation_set, epochs=3)
+
+# callbacks=[callback])
+
+
+```
+
+
+## Evaluation
+
+- Evaluation for question answering requires a significant amount of postprocessing. 
+
+- This guide skips the evaluation step. The Trainer still calculates the evaluation loss during training so you’re not completely in the dark about your model’s performance.
+
+## Inference
+
+- Great, now that you’ve finetuned a model, you can use it for inference!
+
+- Come up with a question and some context you’d like the model to predict:
+
+```{python}
+
+question = "How many programming languages does BLOOM support?"
+context = "BLOOM has 176 billion parameters and can generate text in 46 languages natural languages and 13 programming languages."
+
+```
+
+##
+
+The simplest way to try out your finetuned model for inference is to use it in a pipeline(). Instantiate a pipeline for question answering with your model, and pass your text to it:
+
+```{python}
+
+question_answerer = pipeline("question-answering", model="my_awesome_qa_model")
+question_answerer(question=question, context=context)
+
+```
+
+##
+
+You can also manually replicate the results of the pipeline if you’d like (`from transformers import AutoTokenizer`):
+
+```{python}
+
+tokenizer = AutoTokenizer.from_pretrained("my_awesome_qa_model")
+inputs = tokenizer(question, text, return_tensors="tf")
+
+```
+
+
+##
+
+Pass your inputs to the model and return the logits:
+
+from transformers import TFAutoModelForQuestionAnswering
+
+```{python}
+
+model = TFAutoModelForQuestionAnswering.from_pretrained("my_awesome_qa_model")
+outputs = model(**inputs)
+
+```
+
+Get the highest probability from the model output for the start and end positions:
+
+
+
 
 ## Translation
 
@@ -172,6 +517,9 @@ specific_model(data)
 generator = pipeline(task="automatic-speech-recognition")
 
 ```
+
+
+
 
 ## Using a Pipeline
 
