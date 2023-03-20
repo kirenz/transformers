@@ -1,0 +1,98 @@
+---
+title: "Pipeline"
+format: html
+eval: false
+---
+
+
+##
+
+- The pipeline() makes it simple to use any model from the Hub for inference on any language, computer vision, speech, and multimodal tasks. 
+
+- Even if you don’t have experience with a specific modality or aren’t familiar with the underlying code behind the models, you can still use them for inference with the pipeline()! 
+
+
+## Introduction
+
+- Open-source library
+- Natural Language Processing (NLP) and Machine Learning (ML) capabilities
+
+## Pipelines
+
+- Pre-built, easy-to-use abstractions
+
+- Cover common NLP tasks
+
+- Simplify workflow
+
+- The pipeline() automatically loads a default model and a preprocessing class capable of inference for your task.
+
+
+
+## Available Pipelines
+
+- Text classification
+- Sentiment analysis
+- Named Entity Recognition (NER)
+- Question-answering
+- Translation
+- Summarization
+- Text generation
+- Token classification
+
+## Creating a Pipeline
+
+- Import the pipeline module
+
+. . .
+
+```{python}
+from transformers import pipeline
+```
+
+- Create a pipeline() and specify an inference task:
+
+. . .
+
+```{python}
+
+generator = pipeline(task="automatic-speech-recognition")
+
+```
+
+## Using a Pipeline
+
+- Pass your input text to the pipeline():
+
+
+```{python}
+result = classification_pipeline('This is a great product!')
+print(result)
+
+```
+
+## Customizing Pipelines
+
+- Change model or tokenizer
+
+
+```{python}
+AutoTokenizer, AutoModelForSequenceClassification
+
+model_name = 'distilbert-base-uncased-finetuned-sst-2-english'
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+custom_pipeline = pipeline(
+    'sentiment-analysis', tokenizer=tokenizer, model=model)
+
+```
+
+## Conclusion
+
+- Streamlined NLP workflows
+
+- Easy integration with models
+
+- Customizable for specific tasks
