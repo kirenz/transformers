@@ -1,53 +1,166 @@
 ---
-title: "Pipeline"
-format: html
-eval: false
+title: "Hugging Face Pipelines"
+lang: en
+subtitle: "Types of Pipelines"
+author: Jan Kirenz
+execute:
+  eval: false
+  echo: true
+highlight-style: github
+format:
+  revealjs: 
+    toc: true
+    toc-depth: 1
+    embed-resources: false
+    theme: [dark, ../custom.scss]  
+    incremental: true
+    transition: slide
+    transition-speed: slow
+    background-transition: fade
+    code-copy: true
+    code-line-numbers: true
+    smaller: false
+    scrollable: true
+    slide-number: c
+    preview-links: auto
+    chalkboard: 
+      buttons: false
+    #logo: images/logo.png
+    footer: Source [Hugging Face](https://huggingface.co/)
 ---
 
+# Introduction
 
-##
+## Basics
 
-- The pipeline() makes it simple to use any model from the Hub for inference on any language, computer vision, speech, and multimodal tasks. 
+![](https://huggingface.co/front/assets/huggingface_logo-noborder.svg)
 
-- Even if you don’t have experience with a specific modality or aren’t familiar with the underlying code behind the models, you can still use them for inference with the pipeline()! 
+- *Hugging Face* `Pipelines` cover common machine learning tasks
 
-
-## Introduction
-
-- Open-source library
-- Natural Language Processing (NLP) and Machine Learning (ML) capabilities
-
-## Pipelines
-
-- Pre-built, easy-to-use abstractions
-
-- Cover common NLP tasks
+- Pre-built, easy-to-use abstractions (almost no code necessary)
 
 - Simplify workflow
 
-- The pipeline() automatically loads a default model and a preprocessing class capable of inference for your task.
+## Installation
+
+- You need Anaconda or Miniconda
+
+- Go to this [GitHub-repo](https://github.com/kirenz/environments) 
+
+- Install virtual environment `env-transformers.yml`
+
+## Python setup
+
+```{python}
+from transformers import pipeline
+```
 
 
+# Sentiment analysis
 
-## Available Pipelines
 
-- Text classification
-- Sentiment analysis
-- Named Entity Recognition (NER)
-- Question-answering
-- Translation
-- Summarization
-- Text generation
-- Token classification
+## Intuition
 
-## Creating a Pipeline
+![](images/text-classification.png)
+
+- Text classification: assigning a label or class to a given text
+
+- Sentiment analysis is the automated process of tagging data according to their sentiment:
+  - Positive, negative and neutral
+
+
+## Use Cases
+
+- Sentiment Analysis on Customer Reviews
+
+- You can track the sentiments of your customers from the product reviews using sentiment analysis models. 
+
+- This can help understand churn and retention by grouping reviews by sentiment, to later analyze the text and make strategic decisions based on this knowledge.
+
+
+## Pipeline example with default model
+
+```{python}
+# | code-line-numbers: "|1|3|4|6"
+
+sentiment_pipeline = pipeline("sentiment-analysis")
+
+data = ["I love you",
+        "I hate you"]
+
+sentiment_pipeline(data)
+
+```
+
+- Output:
+
+. . . 
+
+```{bash}
+[{'label': 'POSITIVE', 'score': 0.9998656511306763},
+ {'label': 'NEGATIVE', 'score': 0.9991129040718079}]
+```
+
+
+## Pipeline example with specific model
+
+```{python}
+
+specific_model = pipeline(
+    model="finiteautomata/bertweet-base-sentiment-analysis")
+
+specific_model(data)
+
+```
+
+- Output:
+
+. . . 
+
+```{bash}
+[{'label': 'POS', 'score': 0.9916695356369019},
+ {'label': 'NEG', 'score': 0.9806600213050842}]
+```
+
+## Available models {.smaller}
+
+- Sentiment analysis models on the [Hub](https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads&search=sentiment)
+
+
+- *Twitter-roberta-base-sentiment* is a roBERTa model trained on ~58M tweets and fine-tuned for sentiment analysis. Fine-tuning is the process of taking a pre-trained large language model (e.g. roBERTa in this case) and then tweaking it with additional training data to make it perform a second similar task (e.g. sentiment analysis).
+
+- *Bert-base-multilingual-uncased-sentiment* is a model fine-tuned for sentiment analysis on product reviews in six languages: English, Dutch, German, French, Spanish and Italian.
+
+- *Distilbert-base-uncased-emotion* is a model fine-tuned for detecting emotions in texts, including sadness, joy, love, anger, fear and surprise.
+
+## Resources
+
+- [Federico Pascual (2022). Getting Started with Sentiment Analysis using Python. Hugging Face.](https://huggingface.co/blog/sentiment-analysis-python)
+
+- [Hugging Face documentation](https://huggingface.co/tasks/text-classification)
+
+# Named Entity Recognition (NER)
+
+
+## Question-answering
+
+## Translation
+
+## Summarization
+
+## Text generation
+
+## Token classification
+
+# Creating a Pipeline
+
+## Import
 
 - Import the pipeline module
 
 . . .
 
 ```{python}
-from transformers import pipeline
 ```
 
 - Create a pipeline() and specify an inference task:
@@ -66,8 +179,8 @@ generator = pipeline(task="automatic-speech-recognition")
 
 
 ```{python}
-result = classification_pipeline('This is a great product!')
-print(result)
+generator(
+    "https://github.com/kirenz/transformers/raw/main/huggingface/sound/mlk.flac")
 
 ```
 
