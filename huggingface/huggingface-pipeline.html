@@ -10,7 +10,7 @@
   <meta name="generator" content="quarto-1.2.335">
 
   <meta name="author" content="Jan Kirenz">
-  <title>Hugging Face Pipelines</title>
+  <title>Hugging Face 🤗 Pipelines</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
@@ -391,8 +391,8 @@
     <div class="slides">
 
 <section id="title-slide" class="quarto-title-block center">
-  <h1 class="title">Hugging Face Pipelines</h1>
-  <p class="subtitle">Types of Pipelines</p>
+  <h1 class="title">Hugging Face 🤗 Pipelines</h1>
+  <p class="subtitle">Code examples</p>
 
 <div class="quarto-title-authors">
 <div class="quarto-title-author">
@@ -408,7 +408,7 @@ Jan Kirenz
 <ul>
 <li class="fragment"><a href="#/introduction" id="/toc-introduction">Introduction</a></li>
 <li class="fragment"><a href="#/sentiment-analysis" id="/toc-sentiment-analysis">Sentiment analysis</a></li>
-<li class="fragment"><a href="#/named-entity-recognition-ner" id="/toc-named-entity-recognition-ner">Named Entity Recognition (NER)</a></li>
+<li class="fragment"><a href="#/question-answering" id="/toc-question-answering">Question-answering</a></li>
 <li class="fragment"><a href="#/creating-a-pipeline" id="/toc-creating-a-pipeline">Creating a Pipeline</a></li>
 </ul>
 </nav>
@@ -438,7 +438,15 @@ Jan Kirenz
 <section id="python-setup" class="slide level2">
 <h2>Python setup</h2>
 <div class="cell" data-execution_count="1">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1"></a><span class="im">from</span> transformers <span class="im">import</span> pipeline</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1"></a><span class="im">from</span> transformers.keras_callbacks <span class="im">import</span> PushToHubCallback</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="im">from</span> huggingface_hub <span class="im">import</span> notebook_login</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="im">import</span> tensorflow <span class="im">as</span> tf</span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="im">from</span> transformers <span class="im">import</span> TFAutoModelForQuestionAnswering</span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="im">from</span> transformers <span class="im">import</span> create_optimizer</span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="im">from</span> transformers <span class="im">import</span> DefaultDataCollator</span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="im">from</span> transformers <span class="im">import</span> AutoTokenizer</span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="im">from</span> datasets <span class="im">import</span> load_dataset</span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="im">from</span> transformers <span class="im">import</span> pipeline</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section></section>
 <section>
@@ -516,12 +524,291 @@ Jan Kirenz
 </ul>
 </section></section>
 <section>
-<section id="named-entity-recognition-ner" class="title-slide slide level1 center">
-<h1>Named Entity Recognition (NER)</h1>
-
+<section id="question-answering" class="title-slide slide level1 center">
+<h1>Question-answering</h1>
+<p>The follwoing content is based on the <a href="https://huggingface.co/docs/transformers/tasks/question_answering">Hugging Face documentation</a></p>
 </section>
-<section id="question-answering" class="slide level2">
-<h2>Question-answering</h2>
+<section id="intuition-1" class="slide level2">
+<h2>Intuition</h2>
+<ul>
+<li class="fragment">Question answering tasks return an answer given a question.</li>
+</ul>
+</section>
+<section id="two-common-types" class="slide level2">
+<h2>Two common types</h2>
+<ul>
+<li class="fragment"><p><em>Extractive</em>: selecting an answer directly from the original text</p></li>
+<li class="fragment"><p><em>Abstractive</em>: involves generating a new answer that may not be directly present in the text</p></li>
+</ul>
+</section>
+<section id="log-into-hugging-face" class="slide level2">
+<h2>Log into Hugging Face</h2>
+<ul>
+<li class="fragment"><p>Login to your Hugging Face account so you can upload and share your model.</p></li>
+<li class="fragment"><p>When prompted, enter your token to login (<code>from huggingface_hub import notebook_login</code>)</p></li>
+</ul>
+<div class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1"></a>notebook_login()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="example-data" class="slide level2">
+<h2>Example data</h2>
+<ul>
+<li class="fragment">Start by loading a subset of the SQuAD dataset<sup>1</sup></li>
+</ul>
+<div class="fragment">
+<div class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1"></a>squad <span class="op">=</span> load_dataset(<span class="st">"squad"</span>, split<span class="op">=</span><span class="st">"train[:5000]"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<aside><ol class="aside-footnotes"><li id="fn1"><p>Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset, consisting of questions posed by crowdworkers on a set of Wikipedia articles, where the answer to every question is a segment of text, or span, from the corresponding reading passage, or the question might be unanswerable.</p></li></ol></aside></section>
+<section id="train-test-split" class="slide level2">
+<h2>Train test split</h2>
+<div class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1"></a>squad <span class="op">=</span> squad.train_test_split(test_size<span class="op">=</span><span class="fl">0.2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="take-a-look-at-the-data" class="slide level2">
+<h2>Take a look at the data</h2>
+<div class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1"></a>squad[<span class="st">"train"</span>][<span class="dv">0</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ul>
+<li class="fragment">Output: . . .</li>
+</ul>
+<div class="sourceCode" id="cb10"><pre class="sourceCode numberSource {bash} number-lines code-with-copy"><code class="sourceCode"><span id="cb10-1"><a href="#cb10-1"></a>{'id': '56cece5caab44d1400b88a9f',</span>
+<span id="cb10-2"><a href="#cb10-2"></a> 'title': '2008_Sichuan_earthquake',</span>
+<span id="cb10-3"><a href="#cb10-3"></a> 'context': 'The Red Cross Society of China flew 557 tents and 2,500 quilts valued at 788,000 yuan (US$113,000) to Wenchuan County. The Amity Foundation already began relief work in the region and has earmarked US$143,000 for disaster relief. The Sichuan Ministry of Civil Affairs said that they have provided 30,000 tents for those left homeless.',</span>
+<span id="cb10-4"><a href="#cb10-4"></a> 'question': 'How many tents did the Sichuan Ministry provide for the homeless?',</span>
+<span id="cb10-5"><a href="#cb10-5"></a> 'answers': {'text': ['30,000'], 'answer_start': [297]}}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="take-a-look-at-the-data-1" class="slide level2">
+<h2>Take a look at the data</h2>
+<p>There are several fields here:</p>
+<ul>
+<li class="fragment"><p><em>answers</em>: the starting location of the answer token and the answer text.</p></li>
+<li class="fragment"><p><em>context</em>: background information from which the model needs to extract the answer.</p></li>
+<li class="fragment"><p><em>question</em>: the question a model should answer.</p></li>
+</ul>
+</section>
+<section id="tokenization" class="slide level2">
+<h2>Tokenization</h2>
+<ul>
+<li class="fragment">Load a DistilBERT tokenizer to process the question and context fields (<code>from transformers import AutoTokenizer</code>)</li>
+</ul>
+<div class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(<span class="st">"distilbert-base-uncased"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="preprocessing-steps" class="slide level2">
+<h2>Preprocessing steps</h2>
+<ul>
+<li class="fragment"><p>If context exceeds the maximum input length of the model:</p>
+<ul>
+<li class="fragment">Truncate only the context by setting <code>truncation="only_second"</code></li>
+</ul></li>
+<li class="fragment"><p>Map the start and end positions of the answer to the original context by <code>setting return_offset_mapping=True</code>.</p></li>
+<li class="fragment"><p>With the mapping you can find the start and end tokens of the answer. Use the <code>sequence_ids</code> method to find which part of the offset corresponds to the question and which corresponds to the context.</p></li>
+</ul>
+<p>Here is how you can create a function to truncate and map the start and end tokens of the answer to the context:</p>
+</section>
+<section id="define-preprocessing-function" class="slide level2">
+<h2>Define preprocessing function</h2>
+<div class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">def</span> preprocess_function(examples):</span>
+<span id="cb12-2"><a href="#cb12-2"></a>    questions <span class="op">=</span> [q.strip() <span class="cf">for</span> q <span class="kw">in</span> examples[<span class="st">"question"</span>]]</span>
+<span id="cb12-3"><a href="#cb12-3"></a>    inputs <span class="op">=</span> tokenizer(</span>
+<span id="cb12-4"><a href="#cb12-4"></a>        questions,</span>
+<span id="cb12-5"><a href="#cb12-5"></a>        examples[<span class="st">"context"</span>],</span>
+<span id="cb12-6"><a href="#cb12-6"></a>        max_length<span class="op">=</span><span class="dv">384</span>,</span>
+<span id="cb12-7"><a href="#cb12-7"></a>        truncation<span class="op">=</span><span class="st">"only_second"</span>,</span>
+<span id="cb12-8"><a href="#cb12-8"></a>        return_offsets_mapping<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb12-9"><a href="#cb12-9"></a>        padding<span class="op">=</span><span class="st">"max_length"</span>,</span>
+<span id="cb12-10"><a href="#cb12-10"></a>    )</span>
+<span id="cb12-11"><a href="#cb12-11"></a></span>
+<span id="cb12-12"><a href="#cb12-12"></a>    offset_mapping <span class="op">=</span> inputs.pop(<span class="st">"offset_mapping"</span>)</span>
+<span id="cb12-13"><a href="#cb12-13"></a>    answers <span class="op">=</span> examples[<span class="st">"answers"</span>]</span>
+<span id="cb12-14"><a href="#cb12-14"></a>    start_positions <span class="op">=</span> []</span>
+<span id="cb12-15"><a href="#cb12-15"></a>    end_positions <span class="op">=</span> []</span>
+<span id="cb12-16"><a href="#cb12-16"></a></span>
+<span id="cb12-17"><a href="#cb12-17"></a>    <span class="cf">for</span> i, offset <span class="kw">in</span> <span class="bu">enumerate</span>(offset_mapping):</span>
+<span id="cb12-18"><a href="#cb12-18"></a>        answer <span class="op">=</span> answers[i]</span>
+<span id="cb12-19"><a href="#cb12-19"></a>        start_char <span class="op">=</span> answer[<span class="st">"answer_start"</span>][<span class="dv">0</span>]</span>
+<span id="cb12-20"><a href="#cb12-20"></a>        end_char <span class="op">=</span> answer[<span class="st">"answer_start"</span>][<span class="dv">0</span>] <span class="op">+</span> <span class="bu">len</span>(answer[<span class="st">"text"</span>][<span class="dv">0</span>])</span>
+<span id="cb12-21"><a href="#cb12-21"></a>        sequence_ids <span class="op">=</span> inputs.sequence_ids(i)</span>
+<span id="cb12-22"><a href="#cb12-22"></a></span>
+<span id="cb12-23"><a href="#cb12-23"></a>        <span class="co"># Find the start and end of the context</span></span>
+<span id="cb12-24"><a href="#cb12-24"></a>        idx <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb12-25"><a href="#cb12-25"></a>        <span class="cf">while</span> sequence_ids[idx] <span class="op">!=</span> <span class="dv">1</span>:</span>
+<span id="cb12-26"><a href="#cb12-26"></a>            idx <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb12-27"><a href="#cb12-27"></a>        context_start <span class="op">=</span> idx</span>
+<span id="cb12-28"><a href="#cb12-28"></a>        <span class="cf">while</span> sequence_ids[idx] <span class="op">==</span> <span class="dv">1</span>:</span>
+<span id="cb12-29"><a href="#cb12-29"></a>            idx <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb12-30"><a href="#cb12-30"></a>        context_end <span class="op">=</span> idx <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb12-31"><a href="#cb12-31"></a></span>
+<span id="cb12-32"><a href="#cb12-32"></a>        <span class="co"># If the answer is not fully inside the context, label it (0, 0)</span></span>
+<span id="cb12-33"><a href="#cb12-33"></a>        <span class="cf">if</span> offset[context_start][<span class="dv">0</span>] <span class="op">&gt;</span> end_char <span class="kw">or</span> offset[context_end][<span class="dv">1</span>] <span class="op">&lt;</span> start_char:</span>
+<span id="cb12-34"><a href="#cb12-34"></a>            start_positions.append(<span class="dv">0</span>)</span>
+<span id="cb12-35"><a href="#cb12-35"></a>            end_positions.append(<span class="dv">0</span>)</span>
+<span id="cb12-36"><a href="#cb12-36"></a>        <span class="cf">else</span>:</span>
+<span id="cb12-37"><a href="#cb12-37"></a>            <span class="co"># Otherwise it's the start and end token positions</span></span>
+<span id="cb12-38"><a href="#cb12-38"></a>            idx <span class="op">=</span> context_start</span>
+<span id="cb12-39"><a href="#cb12-39"></a>            <span class="cf">while</span> idx <span class="op">&lt;=</span> context_end <span class="kw">and</span> offset[idx][<span class="dv">0</span>] <span class="op">&lt;=</span> start_char:</span>
+<span id="cb12-40"><a href="#cb12-40"></a>                idx <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb12-41"><a href="#cb12-41"></a>            start_positions.append(idx <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb12-42"><a href="#cb12-42"></a></span>
+<span id="cb12-43"><a href="#cb12-43"></a>            idx <span class="op">=</span> context_end</span>
+<span id="cb12-44"><a href="#cb12-44"></a>            <span class="cf">while</span> idx <span class="op">&gt;=</span> context_start <span class="kw">and</span> offset[idx][<span class="dv">1</span>] <span class="op">&gt;=</span> end_char:</span>
+<span id="cb12-45"><a href="#cb12-45"></a>                idx <span class="op">-=</span> <span class="dv">1</span></span>
+<span id="cb12-46"><a href="#cb12-46"></a>            end_positions.append(idx <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb12-47"><a href="#cb12-47"></a></span>
+<span id="cb12-48"><a href="#cb12-48"></a>    inputs[<span class="st">"start_positions"</span>] <span class="op">=</span> start_positions</span>
+<span id="cb12-49"><a href="#cb12-49"></a>    inputs[<span class="st">"end_positions"</span>] <span class="op">=</span> end_positions</span>
+<span id="cb12-50"><a href="#cb12-50"></a>    <span class="cf">return</span> inputs</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="apply-preprocessing-function" class="slide level2">
+<h2>Apply preprocessing function</h2>
+<p>To apply the preprocessing function over the entire dataset, use Datasets map function.</p>
+<div class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1"></a>tokenized_squad <span class="op">=</span> squad.<span class="bu">map</span>(</span>
+<span id="cb13-2"><a href="#cb13-2"></a>    preprocess_function, batched<span class="op">=</span><span class="va">True</span>, remove_columns<span class="op">=</span>squad[<span class="st">"train"</span>].column_names)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="create-a-batch" class="slide level2">
+<h2>Create a batch</h2>
+<ul>
+<li class="fragment">Create a batch of examples using DefaultDataCollator (<code>from transformers import DefaultDataCollator</code>)</li>
+</ul>
+<div class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1"></a>data_collator <span class="op">=</span> DefaultDataCollator(return_tensors<span class="op">=</span><span class="st">"tf"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="finetune-the-model-in-tensorflow" class="slide level2">
+<h2>Finetune the model in TensorFlow</h2>
+<ul>
+<li class="fragment">Setting up an optimizer function, learning rate schedule, and some training hyperparameters (<code>from transformers import create_optimizer</code>):</li>
+</ul>
+<div class="fragment">
+<div class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1"></a>batch_size <span class="op">=</span> <span class="dv">16</span></span>
+<span id="cb15-2"><a href="#cb15-2"></a>num_epochs <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb15-3"><a href="#cb15-3"></a>total_train_steps <span class="op">=</span> (<span class="bu">len</span>(tokenized_squad[<span class="st">"train"</span>]) <span class="op">//</span> batch_size) <span class="op">*</span> num_epochs</span>
+<span id="cb15-4"><a href="#cb15-4"></a>optimizer, schedule <span class="op">=</span> create_optimizer(</span>
+<span id="cb15-5"><a href="#cb15-5"></a>    init_lr<span class="op">=</span><span class="fl">2e-5</span>,</span>
+<span id="cb15-6"><a href="#cb15-6"></a>    num_warmup_steps<span class="op">=</span><span class="dv">0</span>,</span>
+<span id="cb15-7"><a href="#cb15-7"></a>    num_train_steps<span class="op">=</span>total_train_steps,</span>
+<span id="cb15-8"><a href="#cb15-8"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+</section>
+<section id="section" class="slide level2">
+<h2></h2>
+<p>Then you can load DistilBERT with TFAutoModelForQuestionAnswering:</p>
+<p>xyz .from_pretrained hinzugefügt???</p>
+<div class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1"></a>model <span class="op">=</span> TFAutoModelForQuestionAnswering.from_pretrained(</span>
+<span id="cb16-2"><a href="#cb16-2"></a>    <span class="st">"distilbert-base-uncased"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="convert-dataset" class="slide level2">
+<h2>Convert dataset</h2>
+<ul>
+<li class="fragment">Convert datasets to the tf.data.Dataset format with prepare_tf_dataset():</li>
+</ul>
+<div class="fragment">
+<div class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1"></a>tf_train_set <span class="op">=</span> model.prepare_tf_dataset(</span>
+<span id="cb17-2"><a href="#cb17-2"></a>    tokenized_squad[<span class="st">"train"</span>],</span>
+<span id="cb17-3"><a href="#cb17-3"></a>    shuffle<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb17-4"><a href="#cb17-4"></a>    batch_size<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb17-5"><a href="#cb17-5"></a>    collate_fn<span class="op">=</span>data_collator,</span>
+<span id="cb17-6"><a href="#cb17-6"></a>)</span>
+<span id="cb17-7"><a href="#cb17-7"></a></span>
+<span id="cb17-8"><a href="#cb17-8"></a>tf_validation_set <span class="op">=</span> model.prepare_tf_dataset(</span>
+<span id="cb17-9"><a href="#cb17-9"></a>    tokenized_squad[<span class="st">"test"</span>],</span>
+<span id="cb17-10"><a href="#cb17-10"></a>    shuffle<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb17-11"><a href="#cb17-11"></a>    batch_size<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb17-12"><a href="#cb17-12"></a>    collate_fn<span class="op">=</span>data_collator,</span>
+<span id="cb17-13"><a href="#cb17-13"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+</section>
+<section id="compile" class="slide level2">
+<h2>Compile</h2>
+<p>Configure the model for training with compile (import tensorflow as tf):</p>
+<div class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1"></a>model.<span class="bu">compile</span>(optimizer<span class="op">=</span>optimizer)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="push-model-to-the-hub" class="slide level2">
+<h2>Push model to the hub</h2>
+<ul>
+<li class="fragment"><p>You first need to install an open source Git extension for versioning large files: <a href="https://git-lfs.com/" class="uri">https://git-lfs.com/</a></p></li>
+<li class="fragment"><p>Provide a way to push your model to the Hub (<code>from transformers.keras_callbacks import PushToHubCallback</code>)</p></li>
+</ul>
+<div class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1"></a>callback <span class="op">=</span> PushToHubCallback(</span>
+<span id="cb19-2"><a href="#cb19-2"></a>    output_dir<span class="op">=</span><span class="st">"qa_model_poc"</span>,</span>
+<span id="cb19-3"><a href="#cb19-3"></a>    tokenizer<span class="op">=</span>tokenizer,</span>
+<span id="cb19-4"><a href="#cb19-4"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="start-training" class="slide level2">
+<h2>Start training</h2>
+<ul>
+<li class="fragment"><p>Start training your model!</p></li>
+<li class="fragment"><p>Call fit with your training and validation datasets, the number of epochs, and your callback to finetune the model:</p></li>
+</ul>
+<div class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1"></a>model.fit(x<span class="op">=</span>tf_train_set, validation_data<span class="op">=</span>tf_validation_set, epochs<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="cb20-2"><a href="#cb20-2"></a></span>
+<span id="cb20-3"><a href="#cb20-3"></a><span class="co"># callbacks=[callback])</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="evaluation" class="slide level2">
+<h2>Evaluation</h2>
+<ul>
+<li class="fragment"><p>Evaluation for question answering requires a significant amount of postprocessing.</p></li>
+<li class="fragment"><p>This guide skips the evaluation step. The Trainer still calculates the evaluation loss during training so you’re not completely in the dark about your model’s performance.</p></li>
+</ul>
+</section>
+<section id="inference" class="slide level2">
+<h2>Inference</h2>
+<ul>
+<li class="fragment"><p>Great, now that you’ve finetuned a model, you can use it for inference!</p></li>
+<li class="fragment"><p>Come up with a question and some context you’d like the model to predict:</p></li>
+</ul>
+<div class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1"></a>question <span class="op">=</span> <span class="st">"How many programming languages does BLOOM support?"</span></span>
+<span id="cb21-2"><a href="#cb21-2"></a>context <span class="op">=</span> <span class="st">"BLOOM has 176 billion parameters and can generate text in 46 languages natural languages and 13 programming languages."</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="section-1" class="slide level2">
+<h2></h2>
+<p>The simplest way to try out your finetuned model for inference is to use it in a pipeline(). Instantiate a pipeline for question answering with your model, and pass your text to it:</p>
+<div class="cell" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1"></a>question_answerer <span class="op">=</span> pipeline(<span class="st">"question-answering"</span>, model<span class="op">=</span><span class="st">"my_awesome_qa_model"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2"></a>question_answerer(question<span class="op">=</span>question, context<span class="op">=</span>context)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="section-2" class="slide level2">
+<h2></h2>
+<p>You can also manually replicate the results of the pipeline if you’d like (<code>from transformers import AutoTokenizer</code>):</p>
+<div class="cell" data-execution_count="20">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(<span class="st">"my_awesome_qa_model"</span>)</span>
+<span id="cb23-2"><a href="#cb23-2"></a>inputs <span class="op">=</span> tokenizer(question, text, return_tensors<span class="op">=</span><span class="st">"tf"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="section-3" class="slide level2">
+<h2></h2>
+<p>Pass your inputs to the model and return the logits:</p>
+<p>from transformers import TFAutoModelForQuestionAnswering</p>
+<div class="cell" data-execution_count="21">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1"></a>model <span class="op">=</span> TFAutoModelForQuestionAnswering.from_pretrained(<span class="st">"my_awesome_qa_model"</span>)</span>
+<span id="cb24-2"><a href="#cb24-2"></a>outputs <span class="op">=</span> model(<span class="op">**</span>inputs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Get the highest probability from the model output for the start and end positions:</p>
 </section>
 <section id="translation" class="slide level2">
 <h2>Translation</h2>
@@ -551,8 +838,8 @@ Jan Kirenz
 </ul>
 </div>
 <div class="fragment">
-<div class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1"></a>generator <span class="op">=</span> pipeline(task<span class="op">=</span><span class="st">"automatic-speech-recognition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="22">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1"></a>generator <span class="op">=</span> pipeline(task<span class="op">=</span><span class="st">"automatic-speech-recognition"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </div>
 </section>
@@ -561,9 +848,9 @@ Jan Kirenz
 <ul>
 <li class="fragment">Pass your input text to the pipeline():</li>
 </ul>
-<div class="cell" data-execution_count="5">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1"></a>generator(</span>
-<span id="cb7-2"><a href="#cb7-2"></a>    <span class="st">"https://github.com/kirenz/transformers/raw/main/huggingface/sound/mlk.flac"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="23">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1"></a>generator(</span>
+<span id="cb26-2"><a href="#cb26-2"></a>    <span class="st">"https://github.com/kirenz/transformers/raw/main/huggingface/sound/mlk.flac"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="customizing-pipelines" class="slide level2">
@@ -571,16 +858,16 @@ Jan Kirenz
 <ul>
 <li class="fragment">Change model or tokenizer</li>
 </ul>
-<div class="cell" data-execution_count="6">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1"></a>AutoTokenizer, AutoModelForSequenceClassification</span>
-<span id="cb8-2"><a href="#cb8-2"></a></span>
-<span id="cb8-3"><a href="#cb8-3"></a>model_name <span class="op">=</span> <span class="st">'distilbert-base-uncased-finetuned-sst-2-english'</span></span>
-<span id="cb8-4"><a href="#cb8-4"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(model_name)</span>
-<span id="cb8-5"><a href="#cb8-5"></a></span>
-<span id="cb8-6"><a href="#cb8-6"></a>model <span class="op">=</span> AutoModelForSequenceClassification.from_pretrained(model_name)</span>
-<span id="cb8-7"><a href="#cb8-7"></a></span>
-<span id="cb8-8"><a href="#cb8-8"></a>custom_pipeline <span class="op">=</span> pipeline(</span>
-<span id="cb8-9"><a href="#cb8-9"></a>    <span class="st">'sentiment-analysis'</span>, tokenizer<span class="op">=</span>tokenizer, model<span class="op">=</span>model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="24">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1"></a>AutoTokenizer, AutoModelForSequenceClassification</span>
+<span id="cb27-2"><a href="#cb27-2"></a></span>
+<span id="cb27-3"><a href="#cb27-3"></a>model_name <span class="op">=</span> <span class="st">'distilbert-base-uncased-finetuned-sst-2-english'</span></span>
+<span id="cb27-4"><a href="#cb27-4"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(model_name)</span>
+<span id="cb27-5"><a href="#cb27-5"></a></span>
+<span id="cb27-6"><a href="#cb27-6"></a>model <span class="op">=</span> AutoModelForSequenceClassification.from_pretrained(model_name)</span>
+<span id="cb27-7"><a href="#cb27-7"></a></span>
+<span id="cb27-8"><a href="#cb27-8"></a>custom_pipeline <span class="op">=</span> pipeline(</span>
+<span id="cb27-9"><a href="#cb27-9"></a>    <span class="st">'sentiment-analysis'</span>, tokenizer<span class="op">=</span>tokenizer, model<span class="op">=</span>model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="conclusion" class="slide level2">
@@ -594,6 +881,7 @@ Jan Kirenz
 <p>Source <a href="https://huggingface.co/">Hugging Face</a></p>
 </div>
 </section></section>
+
     </div>
   </div>
 
