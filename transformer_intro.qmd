@@ -1,0 +1,108 @@
+---
+title: "Introduction to Transformer Models"
+format: html
+---
+
+
+# Introduction
+
+- Transformer models are a type of neural network architecture that has gained popularity in the field of natural language processing (NLP).
+
+- They were first introduced in the paper "Attention is All You Need" by Vaswani et al. in 2017 and have since become the foundation of many state-of-the-art NLP models.
+
+### Advantages of Transformer Models
+
+- **Parallelization**: Transformers can process the entire input sequence in parallel, whereas RNNs and CNNs must process the sequence one element at a time.
+
+
+- **Long-term dependencies**: Transformers can more easily capture long-term dependencies between elements of the input sequence, which is a common challenge for RNNs.
+
+- **Scalability**: Transformers can be trained on very large datasets and have been shown to achieve state-of-the-art performance on a wide range of NLP tasks.
+
+### How do Transformer Models work?
+
+- Transformer models consist of an encoder and a decoder. 
+
+- The encoder takes the input sequence and produces a set of context vectors, which are then fed into the decoder to generate the output sequence.
+
+- Each layer of the encoder and decoder consists of a self-attention mechanism, which allows the model to selectively attend to different parts of the input sequence, as well as a feedforward neural network.
+
+
+# How Does a Transformer Model Work?
+
+Transformer models consist of two main components: an encoder and a decoder. 
+
+- The encoder takes the input sequence and produces a set of context vectors, which are then fed into the decoder to generate the output sequence. 
+
+Here's how the process works:
+
+## 1. Input Embeddings
+
+- The input sequence is first transformed into a set of embedding vectors, which represent the meaning of each word or token in the sequence.
+
+- These embeddings are learned during training, and allow the model to understand the semantic relationships between words in the input sequence.
+
+## 2. Encoder
+
+- The encoder takes the input embeddings and processes them through a series of encoder layers.
+
+- Each encoder layer consists of two sub-layers: multi-head self-attention and feedforward neural network.
+
+- The self-attention mechanism allows the model to selectively attend to different parts of the input sequence, while the feedforward network applies a non-linear transformation to the attention outputs.
+
+## 3. Decoder
+
+- The decoder takes the context vectors produced by the encoder and generates the output sequence.
+
+- Like the encoder, the decoder consists of a series of decoder layers, each of which has two sub-layers: masked multi-head self-attention and multi-head attention over the encoder outputs.
+
+- The masked self-attention mechanism allows the decoder to attend to the output sequence generated so far, while the multi-head attention mechanism allows the decoder to attend to different parts of the encoder output.
+
+## 4. Output Layer
+
+- The final layer of the decoder is a linear layer that produces the probability distribution over the possible output tokens.
+
+- During training, the model is trained to maximize the likelihood of the correct output sequence given the input sequence.
+
+- During inference, the model generates the output sequence by iteratively sampling tokens from the output distribution until an end-of-sequence token is generated.
+
+In this course, we will explore each of these components in more detail, and learn how to implement and train transformer models for a variety of NLP tasks.
+
+
+
+
+# Parallelization in Transformer Models
+
+## 
+
+Parallelization is one of the key advantages of Transformer models, allowing them to process the entire input sequence in parallel. This is in contrast to traditional recurrent neural networks (RNNs) and convolutional neural networks (CNNs), which must process the sequence one element at a time. There are several ways in which parallelization can be achieved in Transformer models:
+
+## 1. Multi-head Attention
+
+- The self-attention mechanism used in Transformer models involves computing attention scores between all pairs of positions in the input sequence. 
+
+- This operation can be parallelized by splitting the input sequence into multiple chunks and computing attention scores for each chunk independently.
+
+### 2. Batch Processing
+
+- In addition to multi-head attention, Transformer models can also process multiple sequences in parallel by batching them together.
+
+- This can be done by padding the sequences to the same length and stacking them into a matrix, allowing the model to process them in parallel.
+
+### 3. Model Parallelism
+
+- For very large models or datasets, it may not be feasible to train the entire model on a single GPU or machine. 
+
+- In these cases, model parallelism can be used to split the model across multiple GPUs or machines, allowing each component to be trained independently.
+
+### Examples
+
+Here are some examples of how parallelization can be used in Transformer models:
+
+- The GPT-3 model, which has 175 billion parameters, was trained using model parallelism across multiple GPUs.
+
+- The T5 model, which was trained on a large and diverse set of NLP tasks, used batch processing to train on a dataset of over 750GB of text.
+
+- The BERT model, which was trained on a large corpus of Wikipedia articles, used multi-head attention and batch processing to achieve state-of-the-art performance on several NLP tasks.
+
+
