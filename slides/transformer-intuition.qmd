@@ -1,6 +1,32 @@
 ---
-title: "Transformer Models- Intuition"
-format: html
+title: "Transformers intuition"
+lang: en
+subtitle: "Basics"
+author: Jan Kirenz
+execute:
+  eval: false
+  echo: true
+highlight-style: github
+format:
+  revealjs: 
+    toc: true
+    toc-depth: 1
+    embed-resources: false
+    theme: [dark, ../custom.scss]  
+    incremental: true
+    transition: slide
+    transition-speed: slow
+    background-transition: fade
+    code-copy: true
+    code-line-numbers: true
+    smaller: false
+    scrollable: true
+    slide-number: c
+    preview-links: auto
+    chalkboard: 
+      buttons: false
+    #logo: images/logo.png
+    footer: "Source: [Hugging Face](https://huggingface.co/tasks/question-answering) | Jan Kirenz"
 ---
 
 
@@ -12,20 +38,33 @@ format: html
 Transformers, explained: Understand the model behind GPT, BERT, and T5 by Dale Markowitz
 
 
-## 
+## Important Architectures
 
-Step 1 is to compute relevancy scores between the vector for “station” and every other
-word in the sentence. These are our “attention scores.” We’re simply going to use the
-dot product between two word vectors as a measure of the strength of their relationship.
-It’s a very computationally efficient distance function, and it was already the standard
-way to relate two word embeddings to each other long before Transformers. In
-practice, these scores will also go through a scaling function and a softmax, but for
-now, that’s just an implementation detail.
-Step 2 is to compute the sum of all word vectors in the sentence, weighted by our
-relevancy scores. Words closely related to “station” will contribute more to the sum
-(including the word “station” itself), while irrelevant words will contribute almost
-nothing. The resulting vector is our new representation for “station”: a representation
-that incorporates the surrounding context. In particular, it includes part of the “train”
-vector, clarifying that it is, in fact, a “train station.”
-You’d repeat this process for every word in the sentence, producing a new
-sequence of vectors encoding the sentence. Let’s see it in NumPy-like pseudocode:
+- Convolutional Neural Network (CNN): Images
+
+- Recurrent Neural Network (RNN): Text
+
+- Transformers: Text and more
+
+## Transformers
+
+- Positional Encoding
+
+- Attention
+
+- Self-Attention
+
+## Important Models
+
+- GPT (Generative Pretrained Transformers): GPT-3, GPT-3.5, GPT-4 
+
+- BERT (Bidirectional Encoder Representations from Transformers)
+
+- T5 (Text-to-Text Transfer Transformer)
+
+
+## AutoGPT
+
+{{< video https://www.youtube.com/embed/_rGXIXyNqp k >}}
+
+
